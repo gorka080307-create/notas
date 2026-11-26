@@ -175,3 +175,5 @@ table.ev{width:100%;border-collapse:separate;border-spacing:0;background:var(--c
   .hb{grid-template-columns:100px minmax(0,1fr) 40px} .mbox{align-self:end}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.fd{display:inline-flex;align-items:center;gap:2px}.ev td .fd input{padding:6px 4px}.ev td .btn.ghost{color:var(--fg3)}

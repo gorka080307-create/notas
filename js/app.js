@@ -212,11 +212,11 @@
       <label class="f"><span>Tipo</span><select data-f="conv">${Store.TIPOS.map(t => `<option value="${t.id}" ${i.conv === t.id ? "selected" : ""}>${t.txt}</option>`).join("")}</select></label>
       <label class="f"><span>Curso académico</span><input type="text" data-f="cur" value="${esc(i.cur)}" placeholder="2025-26"></label>
       <label class="f"><span>Resultado</span><select data-f="res">${Object.entries(Store.RES).map(([k, v]) => `<option value="${k}" ${i.res === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
-      <label class="f"><span>Fecha del examen</span><input type="date" data-f="fecha" value="${esc(i.fecha || "")}"></label>
+      <div class="f"><span>Fecha del examen</span><div style="margin-top:4px">${fechaBtn('data-f="fecha"', i.fecha, "i")}</div></div>
       <label class="f"><span>Hora</span><input type="time" data-f="hora" value="${esc(i.hora || "")}"></label>
       <label class="f"><span>Lugar</span><input type="text" data-f="lugar" value="${esc(i.lugar || "")}" placeholder="Aula…"></label></div>
       <div class="tw"><table class="ev"><thead><tr><th>Evaluación</th><th class="r" style="width:100px">Nota</th><th class="r" style="width:100px">Peso %</th><th style="width:140px">Fecha</th><th class="r" style="width:90px">Aporta</th><th style="width:34px"></th></tr></thead><tbody>
-      ${i.ev.map((e, k) => `<tr data-k="${k}"><td><input type="text" data-e="n" value="${esc(e.n)}" aria-label="Nombre"></td><td><input type="number" step="any" min="0" max="10" data-e="v" value="${e.v ?? ""}" aria-label="Nota"></td><td><input type="number" step="any" min="0" max="100" data-e="p" value="${e.p ?? ""}" aria-label="Peso"></td><td><input type="date" data-e="f" value="${esc(e.f || "")}" aria-label="Fecha"></td><td class="apo">${fmt((e.v || 0) * (e.p || 0) / 100)}</td><td><button class="btn sm ghost" data-del-ev="${k}" aria-label="Quitar">✕</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted" style="padding:14px">Sin evaluaciones. Añade la primera.</td></tr>`}
+      ${i.ev.map((e, k) => `<tr data-k="${k}"><td><input type="text" data-e="n" value="${esc(e.n)}" aria-label="Nombre"></td><td><input type="number" step="any" min="0" max="10" data-e="v" value="${e.v ?? ""}" aria-label="Nota"></td><td><input type="number" step="any" min="0" max="100" data-e="p" value="${e.p ?? ""}" aria-label="Peso"></td><td>${fechaBtn('data-e="f" aria-label="Fecha"', e.f, "e:" + k)}</td><td class="apo">${fmt((e.v || 0) * (e.p || 0) / 100)}</td><td><button class="btn sm ghost" data-del-ev="${k}" aria-label="Quitar">✕</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted" style="padding:14px">Sin evaluaciones. Añade la primera.</td></tr>`}
       </tbody><tfoot id="tot">${totHTML(i)}</tfoot></table></div>
       <p style="margin:10px 0 0"><button class="btn sm" data-act="nueva-ev">+ Evaluación</button> ${i.ev.length === 0 ? "" : `<button class="btn sm ghost" data-act="igualar">Repartir pesos por igual</button>`}</p>
       <div id="calc">${calcHTML(i)}</div>
@@ -244,14 +244,17 @@
   document.addEventListener("input", e => {
     const t = e.target, a = asig(ui.sel); if (!a || ui.vista !== "notas") return;
     const i = intActual(a); if (!i) return;
+    if (t.dataset.e === "f") return;
     if (t.dataset.e) { const row = t.closest("tr"), ev = i.ev[+row.dataset.k]; ev[t.dataset.e] = ["n", "f"].includes(t.dataset.e) ? t.value : num(t.value); save(); refrescarDerivados(); }
     else if (t.dataset.f && ["cur", "lugar", "com"].includes(t.dataset.f)) { i[t.dataset.f] = t.value; save(); if (t.dataset.f === "cur") $$(".tab.on").forEach(b => b.lastChild.textContent = ` ${i.cur} · ${tipoTxt(i.conv)}`.replace(/^ /, "")); }
   });
   document.addEventListener("change", e => {
-    const t = e.target, a = asig(ui.sel); if (!a || ui.vista !== "notas" || !t.dataset.f) return;
+    const t = e.target, a = asig(ui.sel); if (!a || ui.vista !== "notas") return;
     const i = intActual(a); if (!i) return;
+    if (t.dataset.e === "f") { i.ev[+t.closest("tr").dataset.k].f = t.value; save(); return reDetalle(); }
+    if (!t.dataset.f) return;
     const f = t.dataset.f; if (["cur", "lugar", "com"].includes(f)) return;
-    i[f] = t.value; save(); if (f === "conv" || f === "res") reDetalle(); else $("#lista").innerHTML = listaHTML();
+    i[f] = t.value; save(); if (f === "conv" || f === "res" || f === "fecha") reDetalle(); else $("#lista").innerHTML = listaHTML();
   });
 
   /* ───────────── CALENDARIO ───────────── */
@@ -330,6 +333,9 @@
   }
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#modal").hidden) { $("#modal").hidden = true; } if (e.key === "Enter" && !$("#modal").hidden && e.target.tagName === "INPUT") { const p = $("#modal .btn.pri"); if (p) p.click(); } });
   const val = (r, n) => $(`[name=${n}]`, r).value;
+  const fechaBtn = (attrs, v, extra = "") => v
+    ? `<span class="fd"><input type="date" ${attrs} value="${esc(v)}"><button class="btn sm ghost" data-clearf="${esc(extra)}" aria-label="Quitar fecha">✕</button></span>`
+    : `<button type="button" class="btn sm ghost" data-addf='${attrs.replace(/'/g, "&#39;")}'>+ Añadir fecha</button>`;
   const campo = (n, t, v = "", tipo = "text", extra = "") => `<label class="f"><span>${t}</span><input type="${tipo}" name="${n}" value="${esc(v)}" ${extra}></label>`;
 
   function dlgAsig(a) {
@@ -358,10 +364,10 @@
       } }]);
   }
   function dlgEvento() {
-    const f = ui.calSel || ISO(new Date());
+    const f = ui.calClick || "";
     modal("Nuevo evento", `${campo("t", "Título", "")}${campo("f", "Fecha", f, "date")}${campo("h", "Hora (opcional)", "", "time")}<label class="f"><span>Tipo</span><select name="k"><option value="otro">Evento</option><option value="entrega">Entrega</option></select></label>`,
       [{ t: "Cancelar" }, { t: "Añadir", c: "pri", fn: r => {
-        const t = val(r, "t").trim(), d = val(r, "f"); if (!t || !d) { toast("Falta el título o la fecha"); return false; }
+        const t = val(r, "t").trim(), d = val(r, "f"); if (!t || !d) { toast(!t ? "Pon un título" : "Elige una fecha para el evento"); return false; }
         S.ev.push({ id: Store.uid("e"), f: d, h: val(r, "h"), t, k: val(r, "k") }); ui.calSel = d; save(); render();
       } }]);
   }
@@ -380,11 +386,13 @@
   document.addEventListener("click", e => {
     const t = e.target.closest("button,[data-dia]"); if (!t) return;
     const D = t.dataset;
+    if (D.addf !== undefined) { const h = document.createElement("div"); h.innerHTML = `<input type="date" ${D.addf}>`; const inp = h.firstChild; t.replaceWith(inp); inp.focus(); try { inp.showPicker(); } catch (er) {} return; }
+    if (D.clearf !== undefined) { const a0 = asig(ui.sel), i0 = a0 && intActual(a0); if (i0) { if (D.clearf === "i") i0.fecha = ""; else i0.ev[+D.clearf.slice(2)].f = ""; save(); reDetalle(); } return; }
     if (D.go) return ir(D.go);
     if (D.open) { ui.sel = D.open; ui.int = null; ui.vistaNotas = "detail"; return ir("notas/" + D.open); }
     if (D.sel) { ui.sel = D.sel; ui.int = null; ui.vistaNotas = "detail"; $("#det").innerHTML = detalleHTML(); $("#lista").innerHTML = listaHTML(); $(".split").dataset.v = "detail"; return; }
     if (D.int) { ui.int = D.int; return reDetalle(); }
-    if (D.dia) { if (ui.vista === "calendario") { ui.calSel = D.dia; const d = parse(D.dia); ui.calM = [d.getFullYear(), d.getMonth()]; return render(); } ui.calSel = D.dia; return ir("calendario"); }
+    if (D.dia) { ui.calClick = D.dia; if (ui.vista === "calendario") { ui.calSel = D.dia; const d = parse(D.dia); ui.calM = [d.getFullYear(), d.getMonth()]; return render(); } ui.calSel = D.dia; return ir("calendario"); }
     if (D.delEv !== undefined) { const a = asig(ui.sel), i = intActual(a); i.ev.splice(+D.delEv, 1); save(); return reDetalle(); }
     if (D.delEvento) { S.ev = S.ev.filter(x => x.id !== D.delEvento); save(); return render(); }
     const act = D.act; if (!act) return;
@@ -400,7 +408,7 @@
       case "nueva-ev": i.ev.push({ n: "Nota " + (i.ev.length + 1), v: null, p: 0, f: "" }); save(); reDetalle(); return $$("#det tbody tr:last-child input")[0]?.select();
       case "igualar": { const p = Math.round(10000 / i.ev.length) / 100; i.ev.forEach(e => e.p = p); save(); return reDetalle(); }
       case "mes-prev": case "mes-next": { const [y, m] = mesActual(), d = new Date(y, m + (act === "mes-next" ? 1 : -1), 1); ui.calM = [d.getFullYear(), d.getMonth()]; return render(); }
-      case "mes-hoy": ui.calM = null; ui.calSel = ISO(new Date()); return render();
+      case "mes-hoy": ui.calM = null; ui.calSel = ISO(new Date()); ui.calClick = null; return render();
       case "nuevo-evento": return dlgEvento();
       case "subir": { let f = $("#file"); if (!f) { f = document.createElement("input"); f.type = "file"; f.id = "file"; f.accept = ".xlsx,.json,application/json"; f.hidden = true; document.body.appendChild(f); } return f.click(); }
       case "demo": S = Store.demo(); Store.guardar(S); toast("Datos de ejemplo cargados"); return render();
