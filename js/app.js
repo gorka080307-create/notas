@@ -307,7 +307,7 @@
   document.addEventListener("drop", e => { const d = e.target.closest("#drop"); if (d) { e.preventDefault(); d.classList.remove("over"); if (e.dataTransfer.files[0]) importar(e.dataTransfer.files[0]); } });
 
   async function importar(file) {
-    let N; try { N = await Store.importarArchivo(file); } catch (err) { toast("No he podido leer el archivo: " + err.message); return; }
+    let N; try { N = await Store.importarArchivo(file); } catch (err) { toast("No he podido leer el archivo (" + (err && err.message || err) + ")"); return; }
     const aplicar = () => { N.cfg = S.cfg; S = N; Store.guardar(S); ui.sel = null; ui.int = null; toast(`Importadas ${N.asig.length} asignaturas y ${N.ints.length} convocatorias`); ir("notas"); };
     if (!S.asig.length) aplicar(); else modal("Importar archivo", `<p>El archivo trae <b>${N.asig.length}</b> asignaturas y <b>${N.ints.length}</b> convocatorias. Ahora tienes ${S.asig.length} asignaturas.</p><p class="muted">Importar sustituye lo que hay ahora. Descarga antes una copia si no quieres perderlo.</p>`, [{ t: "Cancelar" }, { t: "Reemplazar todo", c: "pri", fn: aplicar }]);
   }

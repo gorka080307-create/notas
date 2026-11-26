@@ -128,7 +128,7 @@ const Store = (() => {
   async function importarArchivo(file) {
     const buf = await file.arrayBuffer();
     if (new Uint8Array(buf, 0, 2).join() === "80,75") return importarXlsx(buf);
-    return importarJSON(new TextDecoder().decode(buf));
+    return importarJSON(new TextDecoder().decode(buf).replace(/^\uFEFF/, ""));
   }
 
   /* —— exportación —— */
