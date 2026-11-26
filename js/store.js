@@ -59,7 +59,7 @@ const Store = (() => {
     const ids = new Set(S.asig.map(a => a.id));
     S.ints = (o.ints || []).filter(i => ids.has(i.a)).map(i => ({
       id: String(i.id || uid("i")), a: i.a, cur: String(i.cur || cursoDe()), conv: TIPOS.some(t => t.id === i.conv) ? i.conv : "Ordinaria",
-      ev: (i.ev || []).map(e => ({ n: String(e.n ?? ""), v: num(e.v), p: num(e.p) })), res: RES[i.res] ? i.res : "curso",
+      ev: (i.ev || []).map(e => ({ n: String(e.n ?? ""), v: num(e.v), p: num(e.p), f: e.f || "" })), res: RES[i.res] ? i.res : "curso",
       com: String(i.com || ""), fecha: i.fecha || "", hora: i.hora || "", lugar: i.lugar || ""
     }));
     S.ev = (o.ev || []).filter(e => e && e.f).map(e => ({ id: String(e.id || uid("e")), f: e.f, h: e.h || "", t: String(e.t || "Evento"), k: e.k || "otro" }));
@@ -103,7 +103,28 @@ const Store = (() => {
     if (!S.asig.length) throw new Error("No he encontrado asignaturas en la hoja «" + h.nombre + "»");
     return S;
   }
-  const importarJSON = txt => normalizar(JSON.parse(txt));
+
+  /* —— formato de la app anterior (Calificaciones.json de iPhone) —— */
+  const isoDe = sg => { const d = new Date(sg * 1000); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const bonito = t => t.trim().toLowerCase().replace(/(^|[\s.(])([a-zñáéíóú]+)/g, (m, a, w) => a + (["de", "del", "y", "la", "el", "en", "a", "e", "eta"].includes(w) && a === " " ? w : w[0].toUpperCase() + w.slice(1)));
+  function desdeApp(o) {
+    const S = vacio();
+    o.asignaturas.forEach((x, k) => {
+      const a = { id: "a" + (k + 1), n: bonito(String(x.nombre || "Asignatura")), c: num(x.creditos) ?? 6, y: Math.min(6, Math.max(1, parseInt(x.curso, 10) || 1)) };
+      S.asig.push(a);
+      const cs = (x.convocatorias || []).map((c, j) => ({ c, j })).sort((p, q) => (p.c.anio - q.c.anio) || (p.j - q.j)).map(z => z.c);
+      cs.forEach((c, j) => {
+        const ev = (c.evaluaciones || []).map(e => ({ n: String(e.nombre || ""), v: num(e.nota), p: num(e.peso) ?? 0, f: e.fecha ? isoDe(e.fecha) : "" }));
+        const i = { id: uid("i"), a: a.id, cur: c.anio + "-" + String((c.anio + 1) % 100).padStart(2, "0"), conv: TIPOS.some(t => t.id === c.tipo) ? c.tipo : "Ordinaria", ev, res: "curso", com: "", fecha: "", hora: "", lugar: "" };
+        const hechas = ev.filter(e => e.v !== null), completa = ev.length && hechas.length === ev.length, m = media(i), ultima = j === cs.length - 1;
+        if (completa) i.res = m >= 5 ? "ap" : "su";
+        else if (!ultima) i.res = hechas.length ? (m >= 5 ? "ap" : "su") : "np";
+        S.ints.push(i);
+      });
+    });
+    return S;
+  }
+  const importarJSON = txt => { const o = JSON.parse(txt); return normalizar(Array.isArray(o.asignaturas) ? desdeApp(o) : o); };
   async function importarArchivo(file) {
     const buf = await file.arrayBuffer();
     if (new Uint8Array(buf, 0, 2).join() === "80,75") return importarXlsx(buf);

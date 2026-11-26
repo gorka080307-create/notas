@@ -16,7 +16,8 @@ El código de acceso inicial es **1159** (se cambia en Ajustes → Seguridad).
 En **Ajustes → Importar notas** (o arrastrándolo) acepta:
 
 - `NOTAK.xlsx`: el Excel de notas (hoja «Notas»). Crea asignaturas, créditos, curso, evaluaciones y ordinaria/extraordinaria.
-- `.json`: copia de seguridad descargada desde la propia app (Ajustes → Datos).
+- `Calificaciones.json`: la exportación de la app anterior del iPhone. Importa asignaturas, convocatorias por año, evaluaciones y fechas de examen; el resultado de cada convocatoria (aprobada/suspendida/en curso) se deduce de las notas.
+- `.json` de NOTAK: copia de seguridad descargada desde la propia app (Ajustes → Datos).
 
 También puedes exportar un `.csv` con todas las convocatorias para abrirlo en Excel.
 

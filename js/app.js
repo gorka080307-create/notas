@@ -110,13 +110,17 @@
   /* ───────────── helpers de calendario ───────────── */
   function eventosDia(f) {
     const out = [];
-    for (const i of S.ints) if (i.fecha === f) { const a = asig(i.a); if (a) out.push({ k: "x", t: "Examen · " + a.n, h: i.hora, lugar: i.lugar, a: a.id, i: i.id, sub: tipoTxt(i.conv) }); }
+    for (const i of S.ints) { const a = asig(i.a); if (!a) continue; const evf = i.ev.filter(e => e.f === f);
+      evf.forEach(e => out.push({ k: "x", t: "Examen · " + a.n, h: i.hora, lugar: i.lugar, a: a.id, i: i.id, sub: e.n + " · " + tipoTxt(i.conv) }));
+      if (i.fecha === f && !evf.length) out.push({ k: "x", t: "Examen · " + a.n, h: i.hora, lugar: i.lugar, a: a.id, i: i.id, sub: tipoTxt(i.conv) }); }
     for (const e of S.ev) if (e.f === f) out.push({ k: e.k === "entrega" ? "x" : "e", t: e.t, h: e.h, id: e.id, sub: e.k === "entrega" ? "Entrega" : "Evento" });
     return out.sort((a, b) => (a.h || "99").localeCompare(b.h || "99"));
   }
   function proximos(n = 6) {
     const hoy = ISO(new Date()), set = [];
-    for (const i of S.ints) if (i.fecha && i.fecha >= hoy) { const a = asig(i.a); if (a) set.push({ f: i.fecha, h: i.hora, t: a.n, sub: tipoTxt(i.conv) + (i.lugar ? " · " + i.lugar : ""), a: a.id, k: "x" }); }
+    for (const i of S.ints) { const a = asig(i.a); if (!a) continue; const evf = i.ev.filter(e => e.f && e.f >= hoy);
+      evf.forEach(e => set.push({ f: e.f, h: i.hora, t: a.n, sub: e.n + " · " + tipoTxt(i.conv) + (i.lugar ? " · " + i.lugar : ""), a: a.id, k: "x" }));
+      if (i.fecha && i.fecha >= hoy && !i.ev.some(e => e.f === i.fecha)) set.push({ f: i.fecha, h: i.hora, t: a.n, sub: tipoTxt(i.conv) + (i.lugar ? " · " + i.lugar : ""), a: a.id, k: "x" }); }
     for (const e of S.ev) if (e.f >= hoy) set.push({ f: e.f, h: e.h, t: e.t, sub: e.k === "entrega" ? "Entrega" : "Evento", k: "e" });
     return set.sort((a, b) => (a.f + (a.h || "")).localeCompare(b.f + (b.h || ""))).slice(0, n);
   }
@@ -211,15 +215,15 @@
       <label class="f"><span>Fecha del examen</span><input type="date" data-f="fecha" value="${esc(i.fecha || "")}"></label>
       <label class="f"><span>Hora</span><input type="time" data-f="hora" value="${esc(i.hora || "")}"></label>
       <label class="f"><span>Lugar</span><input type="text" data-f="lugar" value="${esc(i.lugar || "")}" placeholder="Aula…"></label></div>
-      <div class="tw"><table class="ev"><thead><tr><th>Evaluación</th><th class="r" style="width:100px">Nota</th><th class="r" style="width:100px">Peso %</th><th class="r" style="width:90px">Aporta</th><th style="width:34px"></th></tr></thead><tbody>
-      ${i.ev.map((e, k) => `<tr data-k="${k}"><td><input type="text" data-e="n" value="${esc(e.n)}" aria-label="Nombre"></td><td><input type="number" step="any" min="0" max="10" data-e="v" value="${e.v ?? ""}" aria-label="Nota"></td><td><input type="number" step="any" min="0" max="100" data-e="p" value="${e.p ?? ""}" aria-label="Peso"></td><td class="apo">${fmt((e.v || 0) * (e.p || 0) / 100)}</td><td><button class="btn sm ghost" data-del-ev="${k}" aria-label="Quitar">✕</button></td></tr>`).join("") || `<tr><td colspan="5" class="muted" style="padding:14px">Sin evaluaciones. Añade la primera.</td></tr>`}
+      <div class="tw"><table class="ev"><thead><tr><th>Evaluación</th><th class="r" style="width:100px">Nota</th><th class="r" style="width:100px">Peso %</th><th style="width:140px">Fecha</th><th class="r" style="width:90px">Aporta</th><th style="width:34px"></th></tr></thead><tbody>
+      ${i.ev.map((e, k) => `<tr data-k="${k}"><td><input type="text" data-e="n" value="${esc(e.n)}" aria-label="Nombre"></td><td><input type="number" step="any" min="0" max="10" data-e="v" value="${e.v ?? ""}" aria-label="Nota"></td><td><input type="number" step="any" min="0" max="100" data-e="p" value="${e.p ?? ""}" aria-label="Peso"></td><td><input type="date" data-e="f" value="${esc(e.f || "")}" aria-label="Fecha"></td><td class="apo">${fmt((e.v || 0) * (e.p || 0) / 100)}</td><td><button class="btn sm ghost" data-del-ev="${k}" aria-label="Quitar">✕</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted" style="padding:14px">Sin evaluaciones. Añade la primera.</td></tr>`}
       </tbody><tfoot id="tot">${totHTML(i)}</tfoot></table></div>
       <p style="margin:10px 0 0"><button class="btn sm" data-act="nueva-ev">+ Evaluación</button> ${i.ev.length === 0 ? "" : `<button class="btn sm ghost" data-act="igualar">Repartir pesos por igual</button>`}</p>
       <div id="calc">${calcHTML(i)}</div>
       <label class="f" style="margin-top:14px"><span>Comentarios</span><textarea data-f="com" rows="3" placeholder="Qué falló, qué repasar…">${esc(i.com || "")}</textarea></label>
       <p style="margin-top:12px"><button class="btn sm bad" data-act="borrar-int">Eliminar esta convocatoria</button></p>`;
   }
-  const totHTML = i => { const p = Store.pesoTotal(i); return `<tr><td>Media de la convocatoria</td><td></td><td class="r num" style="${p > 100.001 ? "color:var(--bad)" : ""}">${fmt(p)}</td><td class="apo" style="color:var(--fg)">${fmt(Store.media(i))}</td><td></td></tr>`; };
+  const totHTML = i => { const p = Store.pesoTotal(i); return `<tr><td>Media de la convocatoria</td><td></td><td class="r num" style="${p > 100.001 ? "color:var(--bad)" : ""}">${fmt(p)}</td><td></td><td class="apo" style="color:var(--fg)">${fmt(Store.media(i))}</td><td></td></tr>`; };
   function calcHTML(i) {
     if (!i.ev.length) return "";
     const p = Store.pesoTotal(i), n = Store.necesaria(i);
@@ -240,7 +244,7 @@
   document.addEventListener("input", e => {
     const t = e.target, a = asig(ui.sel); if (!a || ui.vista !== "notas") return;
     const i = intActual(a); if (!i) return;
-    if (t.dataset.e) { const row = t.closest("tr"), ev = i.ev[+row.dataset.k]; ev[t.dataset.e] = t.dataset.e === "n" ? t.value : num(t.value); save(); refrescarDerivados(); }
+    if (t.dataset.e) { const row = t.closest("tr"), ev = i.ev[+row.dataset.k]; ev[t.dataset.e] = ["n", "f"].includes(t.dataset.e) ? t.value : num(t.value); save(); refrescarDerivados(); }
     else if (t.dataset.f && ["cur", "lugar", "com"].includes(t.dataset.f)) { i[t.dataset.f] = t.value; save(); if (t.dataset.f === "cur") $$(".tab.on").forEach(b => b.lastChild.textContent = ` ${i.cur} · ${tipoTxt(i.conv)}`.replace(/^ /, "")); }
   });
   document.addEventListener("change", e => {
@@ -348,7 +352,7 @@
       <label class="f"><span>Evaluaciones</span><select name="copia"><option value="1">Copiar la estructura de la anterior (sin notas)</option><option value="0">Empezar vacía</option></select></label>`,
       [{ t: "Cancelar" }, { t: "Crear", c: "pri", fn: r => {
         const base = l.filter(x => x.ev.length).pop();
-        const ev = val(r, "copia") === "1" && base ? base.ev.map(e => ({ n: e.n, v: null, p: e.p })) : [{ n: "Nota 1", v: null, p: 100 }];
+        const ev = val(r, "copia") === "1" && base ? base.ev.map(e => ({ n: e.n, v: null, p: e.p, f: "" })) : [{ n: "Nota 1", v: null, p: 100 }];
         const i = { id: Store.uid("i"), a: a.id, cur: val(r, "cur").trim() || cc, conv: val(r, "conv"), ev, res: "curso", com: "", fecha: val(r, "fecha"), hora: "", lugar: "" };
         S.ints.push(i); ui.int = i.id; save(); reDetalle(); toast("Convocatoria creada");
       } }]);
@@ -393,7 +397,7 @@
       case "borrar-asig": return modal("Eliminar asignatura", `<p>Se borrará <b>${esc(a.n)}</b> con todas sus convocatorias.</p>`, [{ t: "Cancelar" }, { t: "Eliminar", c: "bad", fn: () => { S.ints = S.ints.filter(x => x.a !== a.id); S.asig = S.asig.filter(x => x.id !== a.id); ui.sel = null; ui.vistaNotas = "list"; save(); render(); } }]);
       case "nueva-int": return dlgInt();
       case "borrar-int": return modal("Eliminar convocatoria", `<p>¿Eliminar la convocatoria <b>${esc(i.cur)} · ${esc(tipoTxt(i.conv))}</b>?</p>`, [{ t: "Cancelar" }, { t: "Eliminar", c: "bad", fn: () => { S.ints = S.ints.filter(x => x.id !== i.id); ui.int = null; save(); reDetalle(); } }]);
-      case "nueva-ev": i.ev.push({ n: "Nota " + (i.ev.length + 1), v: null, p: 0 }); save(); reDetalle(); return $$("#det tbody tr:last-child input")[0]?.select();
+      case "nueva-ev": i.ev.push({ n: "Nota " + (i.ev.length + 1), v: null, p: 0, f: "" }); save(); reDetalle(); return $$("#det tbody tr:last-child input")[0]?.select();
       case "igualar": { const p = Math.round(10000 / i.ev.length) / 100; i.ev.forEach(e => e.p = p); save(); return reDetalle(); }
       case "mes-prev": case "mes-next": { const [y, m] = mesActual(), d = new Date(y, m + (act === "mes-next" ? 1 : -1), 1); ui.calM = [d.getFullYear(), d.getMonth()]; return render(); }
       case "mes-hoy": ui.calM = null; ui.calSel = ISO(new Date()); return render();
